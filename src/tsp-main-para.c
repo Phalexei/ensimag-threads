@@ -34,17 +34,16 @@ long int myseed= 0;
 /* nombre de threads */
 int nb_threads=1;
 
+/* variables partagées */
+tsp_path_t sol;
+int sol_len;
+long long int cuts = 0;
+struct tsp_queue q;
+
+pthread_mutex_t mutex[MUT_LENGTH];
+
 /* affichage SVG */
 bool affiche_sol= false;
-
-typedef struct {
-    struct tsp_queue q;
-    tsp_path_t* solution;
-    long long int cuts;
-    tsp_path_t* sol;
-    int sol_len;
-} doWorkParams;
-
 
 static void generate_tsp_jobs (struct tsp_queue *q, int hops, int len, tsp_path_t path, long long int *cuts, tsp_path_t sol, int *sol_len, int depth)
 {
@@ -74,21 +73,13 @@ static void usage(const char *name) {
 }
 
 void* doWork (void* arg) {
-    doWorkParams* params = (doWorkParams*)arg;
-    if (params) {
-        struct tsp_queue q = params->q;
-        tsp_path_t* solution = params->solution;
-        long long int cuts = params->cuts;
-        tsp_path_t* sol = params->sol;
-        int sol_len = params->sol_len;
-   
-        while (!empty_queue (&q)) {
-            int hops = 0, len = 0;
-            get_job (&q,* solution, &hops, &len);
-            tsp (hops, len, *solution, &cuts, *sol, &sol_len);
-        }
-    } else {
-        //caca
+    while (!empty_queue (&q)) {
+        tsp_path_t path_thread;
+        int hops = 0, len = 0;
+        get_job (&q,path_thread, &hops, &len);
+        // queue
+        tsp (hops, len, path_thread, &cuts, sol, &sol_len);
+        // cuts, sol_len, solution
     }
     return (void*)0;
 }
@@ -96,13 +87,10 @@ void* doWork (void* arg) {
 int main (int argc, char **argv)
 {
     unsigned long long perf;
-    tsp_path_t path;
-    tsp_path_t sol;
-    int sol_len;
-    long long int cuts = 0;
-    struct tsp_queue q;
     struct timespec t1, t2;
     pthread_t* threads;
+    tsp_path_t path;
+    tsp_path_t solution;
 
     /* lire les arguments */
     int opt;
@@ -145,24 +133,23 @@ int main (int argc, char **argv)
     no_more_jobs (&q);
 
     /* calculer chacun des travaux */
-    tsp_path_t solution;
     memset (solution, -1, MAX_TOWNS * sizeof (int));
     solution[0] = 0;
 
-    doWorkParams params;
-    params.q = q;
-    params.solution = &solution;
-    params.cuts = cuts;
-    params.sol = &sol;
-    params.sol_len = sol_len;
+    for (int i=0; i < MUT_LENGTH; i++) {
+        pthread_mutex_init(&mutex[i], NULL);
+    }
 
     for (int i=0; i < nb_threads; i++) {
-        pthread_create(&threads[i], NULL, doWork, (void*)&params);
+        pthread_create(&threads[i], NULL, doWork, (void*)NULL);
     }
 
     void* status;
     for (int i=0; i < nb_threads; i++) {
         pthread_join(threads[i], &status);
+    }
+    for (int i=0; i < MUT_LENGTH; i++) {
+        pthread_mutex_destroy(&mutex[i]);
     }
 
     clock_gettime (CLOCK_REALTIME, &t2);
