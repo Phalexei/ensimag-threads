@@ -77,11 +77,17 @@ void* doWork (void* arg) {
     memset (sol_thread, -1, MAX_TOWNS * sizeof (int));
     sol_thread[0] = 0;
     long long int cuts_thread = 0;
+    int min_thread;
     while (!empty_queue (&q)) {
         int hops = 0, len = 0;
         get_job (&q, sol_thread, &hops, &len);
         // queue
-        tsp (hops, len, sol_thread, &cuts_thread, sol, &sol_len);
+        
+        pthread_mutex_lock(&mutex[MUT_MINIMUM]);
+        min_thread = minimum;
+        pthread_mutex_unlock(&mutex[MUT_MINIMUM]);
+
+        tsp (hops, len, sol_thread, &cuts_thread, sol, &sol_len, min_thread);
         // cuts, sol_len, solution
     }
     pthread_mutex_lock(&mutex[MUT_CUTS]);
