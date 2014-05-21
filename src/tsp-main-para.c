@@ -35,9 +35,9 @@ long int myseed= 0;
 int nb_threads=1;
 
 /* variables partagées */
-tsp_path_t sol;
 int sol_len;
 long long int cuts = 0;
+tsp_path_t sol;
 struct tsp_queue q;
 
 pthread_mutex_t mutex[MUT_LENGTH];
@@ -73,14 +73,20 @@ static void usage(const char *name) {
 }
 
 void* doWork (void* arg) {
+    tsp_path_t sol_thread;
+    memset (sol_thread, -1, MAX_TOWNS * sizeof (int));
+    sol_thread[0] = 0;
+    long long int cuts_thread = 0;
     while (!empty_queue (&q)) {
-        tsp_path_t path_thread;
         int hops = 0, len = 0;
-        get_job (&q,path_thread, &hops, &len);
+        get_job (&q, sol_thread, &hops, &len);
         // queue
-        tsp (hops, len, path_thread, &cuts, sol, &sol_len);
+        tsp (hops, len, sol_thread, &cuts_thread, sol, &sol_len);
         // cuts, sol_len, solution
     }
+    pthread_mutex_lock(&mutex[MUT_CUTS]);
+    cuts += cuts_thread;
+    pthread_mutex_unlock(&mutex[MUT_CUTS]);
     return (void*)0;
 }
 
@@ -90,7 +96,6 @@ int main (int argc, char **argv)
     struct timespec t1, t2;
     pthread_t* threads;
     tsp_path_t path;
-    tsp_path_t solution;
 
     /* lire les arguments */
     int opt;
@@ -133,9 +138,6 @@ int main (int argc, char **argv)
     no_more_jobs (&q);
 
     /* calculer chacun des travaux */
-    memset (solution, -1, MAX_TOWNS * sizeof (int));
-    solution[0] = 0;
-
     for (int i=0; i < MUT_LENGTH; i++) {
         pthread_mutex_init(&mutex[i], NULL);
     }

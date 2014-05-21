@@ -26,10 +26,12 @@ int present (int city, int hops, tsp_path_t path)
 
 void tsp (int hops, int len, tsp_path_t path, long long int *cuts, tsp_path_t sol, int *sol_len)
 {
+    // thread safe : cuts,hops, len, path
+    // non thread-safe : sol, sol_len, minimum
+    
+
     if (len + cutprefix[(nb_towns-hops)] >= minimum) {
-        pthread_mutex_lock(&mutex[MUT_CUTS]);
         (*cuts)++ ;
-        pthread_mutex_unlock(&mutex[MUT_CUTS]);
         return;
     }
 
@@ -39,14 +41,10 @@ void tsp (int hops, int len, tsp_path_t path, long long int *cuts, tsp_path_t so
         if ( len + dist < minimum ) {
             minimum = len + dist;
             
-            pthread_mutex_lock(&mutex[MUT_SOL_LEN]);
             *sol_len = len + dist;
-            pthread_mutex_unlock(&mutex[MUT_SOL_LEN]);
 
 
-            pthread_mutex_lock(&mutex[MUT_SOL]);
             memcpy(sol, path, nb_towns*sizeof(int));
-            pthread_mutex_unlock(&mutex[MUT_SOL]);
             print_solution (path, len+dist);
         }
     } else {

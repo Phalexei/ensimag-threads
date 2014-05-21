@@ -7,7 +7,7 @@
 #define MUT_SOL_LEN     1
 #define MUT_CUTS        2
 #define MUT_QUEUE       3
-#define MUT_SOLUTION    4
+#define MUT_MINIMUM     4
 
 #define MUT_LENGTH      5
 
