@@ -29,7 +29,11 @@ void init_queue (struct tsp_queue *q) {
 }
 
 int empty_queue (struct tsp_queue *q) {
-    return ((q->first == 0) && (q->end == 1));
+    int bRet = 0;
+    pthread_mutex_lock(&mutex[MUT_QUEUE]);
+    bRet = ((q->first == 0) && (q->end == 1));
+    pthread_mutex_unlock(&mutex[MUT_QUEUE]);
+    return bRet;
 }
 
 void add_job (struct tsp_queue *q, tsp_path_t p, int hops, int len) {
